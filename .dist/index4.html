@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>D3 Map</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/topojson-client@3"></script>
+</head>
+
+<body bgcolor="#808080">
+    <div id="map"></div>
+    <script>
+        const width = 800;
+        const height = 800;
+        const config = {
+            speed: 0.005,
+            verticalTilt: -30,
+            horizontalTilt: 0
+        };
+
+        const svg = d3.select("body").append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        const projection = d3.geoOrthographic()
+            .scale(250)
+            .translate([width / 2, height / 2]);
+
+        const path = d3.geoPath().projection(projection);
+
+        // Define color scale
+        const color = d3.scaleThreshold()
+            .domain([100, 1000, 10000, 50000, 100000, 1000000])
+            .range(["#00f663", "#00a844", "#008134", "#005924", "#003214", "#000b04"]);
+
+        // Load data and map
+        d3.csv("Documents\Uni\Year 4\Semester 2\Data Vis\CW1\.dist\covid_databaseF20DV.csv").then(function (data) {
+        //d3.csv("https://raw.githubusercontent.com/owid/covid-19-data/037203097b4b7383163a7fcd08ec8ab1645447d3/public/data/jhu/full_data.csv").then(function (data) {
+            // Filter out rows with NaN values
+            
+            
+            // Convert data types
+            data.forEach(function (d) {
+                d.total_cases = Number(d.total_cases);
+                d.date = d3.timeParse("%Y-%m-%d")(d.date);
+            });
+
+            // Load map data and draw map
+            d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json").then(function (world) {
+                const countries = topojson.feature(world, world.objects.countries);
+
+                const countryData = {};
+                data.forEach(function (d) {
+                    const isoCode = d.iso_code;
+                    if (!countryData[isoCode]) {
+                        countryData[isoCode] = {
+                            data: [],
+                            cumulative_cases: 0
+                        };
+                    }
+                    countryData[isoCode].data.push(d);
+                });
+
+                //let currentData = [];
+
+                const updateData = function (date) {
+                    for (const isoCode in countryData) {
+                        const countryCases = countryData[isoCode].data;
+                        let cumulativeCases = 0;
+                        for (let i = 0; i < countryCases.length; i++) {
+                            const d = countryCases[i];
+                            if (d.date > date) {
+                                break;
+                            }
+                            cumulativeCases += d.total_cases;
+                        }
+                        countryData[isoCode].cumulative_cases = cumulativeCases;
+                        console.log(countryData[isoCode].cumulative_cases);
+                    }
+                    svg.selectAll(".country")
+                    .style("fill", function (d) {
+                        const isoCode = d.id;
+                        const cases = countryData[isoCode] ? countryData[isoCode].cumulative_cases : 0;
+                        console.log(cases);
+                        return color(cases);
+                    });
+                    };
+
+                    const currentDate = data[data.length - 1].date;
+                    updateData(currentDate);
+        
+                    svg.selectAll(".country")
+                        .data(countries.features)
+                        .enter().insert("path", ".graticule")
+                        .attr("class", "country")
+                        .attr("d", path)
+                        .style("fill", function (d) {
+                            const isoCode = d.id;
+                            const cases = countryData[isoCode] ? countryData[isoCode].cumulative_cases : 0;
+                            return color(cases);
+                        });
+
+                //const updateMap = function () {
+                  //  const country = svg.selectAll("path")
+                    //    .data(countries.features);
+        
+                    //country.enter().append("path")
+                      //  .attr("class", "country")
+                        //.attr("d", path)
+                       // .attr("fill", "#ccc")
+                       // .merge(country)
+                       // .transition()
+                       // .duration(1000)
+                        //.attr("fill", function (d) {
+                          //  const countryPopulation = currentData.find(function (c) {
+                            //    return c.iso_code === d.id;
+                           // });
+        
+                            //if (countryPopulation) {
+                              //  return color(countryPopulation.total_cases);
+                            //} else {
+                              //  return "#ccc";
+                            //}
+                        //});
+        
+                    //country.exit().remove();
+                //};
+        
+                //updateData(date);
+            
+
+                const timeScale = d3.scaleTime()
+                    .domain(d3.extent(data, function (d) {
+                        return d.date;
+                    }));
+
+                let timer;
+                const playButton = d3.select("body")
+                    .append("button")
+                    .text("Play")
+                    .on("click", function () {
+                        let date = timeScale.domain()[0];
+                        const endDate = timeScale.domain()[1];
+                        clearInterval(timer);
+                        timer = setInterval(function () {
+                            date = new Date(date.getTime() + 24 * 60 * 60 * 1000);
+                            updateData();
+                            if (date > endDate) {
+                                clearInterval(timer);
+                            } else {
+                                updateData(date);
+                               
+                                //svg.selectAll("path")
+                                //.data(countries.features)
+                                //.join("path")
+                                //.attr("d", path)
+                                //.attr("fill", function (d) {
+                                 //   const isoCode = d.id;
+                                   // const countryCases = currentData.filter(function (d) {
+                                     //   return d.iso_code === isoCode;
+                                    //});
+                                    //const cases = countryCases.length ? countryCases[countryCases.length - 1].total_cases : 0;
+                                    //return color(cases);
+                                //})
+                                //.attr("stroke", "#fff")
+                                //.attr("stroke-width", "0.5");
+
+                            const currentDateString = d3.timeFormat("%Y-%m-%d")(date);
+                            d3.select("#date").text(currentDateString);
+                        }
+                    }, 50);
+                });
+
+            const pauseButton = d3.select("body")
+                .append("button")
+                .text("Pause")
+                .on("click", function () {
+                    clearInterval(timer);
+                });
+
+            svg.call(d3.zoom()
+                .on("zoom", function (event) {
+                    projection.rotate([
+                        config.horizontalTilt + event.transform.x * config.speed,
+                        config.verticalTilt + event.transform.y * config.speed
+                    ]);
+                    svg.selectAll("path").attr("d", path);
+                }));
+
+        });
+        function enableRotation() {
+            d3.timer(function (elapsed) {
+                projection.rotate([config.speed * elapsed - 120, config.verticalTilt, config.horizontalTilt]);
+                svg.selectAll("path").attr("d", path);
+             //drawMarkers();
+            });
+        }
+        enableRotation();
+
+        // 11. Add a legend
+        var legend = svg.append("g")
+          .attr("id", "legend")
+          .attr("transform", "translate(20,20)");
+       
+        legend.selectAll("rect")
+          .data([1000000, 100000, 50000,10000, 1000, 100])
+          .enter()
+          .append("rect")
+          .attr("x", 0)
+          .attr("y", function (d, i) {
+            return i * 20;
+          })
+          .attr("width", 20)
+          .attr("height", 20)
+          .style("fill", function (d) {
+            return color.domain([100, 1000, 10000, 50000, 100000, 1000000])(d);
+            //d3.interpolateBlues(d3.scaleLinear().domain([1000, 100000])(d));
+          });
+        
+        legend.selectAll("text")
+          .data([1000000, 100000, 50000,10000, 1000, 100])
+          .enter()
+          .append("text")
+          .style("fill", "white")
+          .attr("x", 30)
+          .attr("y", function (d, i) {
+            return i * 20 + 14;
+          })
+          .text(function (d) {
+            return d3.format(",")(d);
+          });
+        })
+        .catch(function (error) {
+            console.log(error);
+        });
+
+    // 9. Add a tooltip
+    var tooltip = d3.select("body")
+      .append("div")
+      .attr("id", "tooltip")
+      .style("opacity", 0);
+    
+    
+</script>
+<div>
+    <p style="color: #fff;">Date: <span id="date"></span></p>
+</div>
+</body>
+</html>

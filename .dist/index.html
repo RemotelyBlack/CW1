@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<!-- <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            * {
+                font-family: 'Times New Roman', Times, serif;
+            }
+            p{
+                font-size: 0.95cm;
+            }
+            svg{
+                background: #efefef;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="map"></div>
+        <script src="https://d3js.org/d3.v7.min.js"></script>
+        <script src="http://d3js.org/topojson.v1.min.js"></script>
+        <script src"visualSetup.js"></script>
+    </body>
+</html> -->
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<title>D3 Map</title>
+	<script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/topojson-client@3"></script>
+</head>
+
+<body bgcolor="#808080">
+    <div id="map"></div>
+	<script>
+       
+		const width = 800;
+        const height = 800;
+        const config = {
+            speed: 0.005,
+            verticalTilt: -30,
+            horizontalTilt: 0
+          };
+
+        const svg = d3.select("body").append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        const projection = d3.geoOrthographic()
+        //d3.geoMercator()
+            .scale(250)
+            .translate([width / 2, height / 2]);
+
+        const path = d3.geoPath().projection(projection);
+          
+
+        const color = d3.scaleThreshold()
+            .domain([100, 1000, 10000, 50000, 100000, 1000000])
+            .range(["#00f663", "#00a844", "#008134", "#005924", "#003214", "#000b04"]);
+            //.range(["#f7fcf5", "#e5f5e0", "#c7e9c0", "#a1d99b", "#74c476", "#31a354", "#006d2c"]);
+            
+        //const color = d3.scaleLinear()
+          //  .range(["white", "blue"]);
+          //d3.csv("https://raw.githubusercontent.com/owid/covid-19-data/ecdc06a0133e15c25bdcbb4635cb5ef3fb5aff43/public/data/jhu/total_cases.csv").then(function(data) {
+           // data.forEach(function(d) {
+           //   d.total_cases = Number(d.total_cases);
+           // });
+            d3.csv("https://raw.githubusercontent.com/owid/covid-19-data/037203097b4b7383163a7fcd08ec8ab1645447d3/public/data/jhu/full_data.csv").then(function(data) {
+              data.forEach(function(d) {
+                d.total_cases = Number(d.total_cases);
+              });
+              //color.domain(d3.extent(data, function(d) { return +d.total_cases; }));
+            //.domain(d3.extent(data, function(d) { return +d.total_cases; }));
+
+            d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json").then(function(world) {
+                const countries = topojson.feature(world, world.objects.countries);
+
+                // 3. Append a g element for the map
+            const map = svg.append("g")
+            ////map.append('rect')
+            .attr('width', width)
+            .attr('height', height)
+            //.attr('fill', 'lightBlue');
+
+            map.selectAll("path")
+              .data(countries.features)
+              .enter()
+              .append("path")
+              .attr("d", path)
+              .style("stroke", "#fff")
+              .style("stroke-width", "0.5px")
+              .style("fill", function(d) {
+                //data.forEach(function(d) {
+                //  d.total_cases = Number(d.total_cases);
+                 // d.color = color(d.total_cases);
+               // });
+                const countryData = data.find(function(dataPoint) {
+                  
+                  return countries.id === d.id;
+                  return dataPoint.iso_code === d.id;
+                });
+                return countryData ? color(Number(countryData.total_cases)) : "#ccc";
+              })
+
+        // 8. Bind the COVID-19 data to the map
+        //map.selectAll("path")
+          //.data(countries.features)
+          //.enter()
+          //.append("path")
+          //.attr("d", path)
+          //.style("stroke", "#fff")
+          //.style("stroke-width", "0.5px")
+          //.data(data, function (d) {
+           // return d.iso_code;
+          //})
+          //.style("fill", function(d) { return  color(d.total_cases); })
+
+        //.style("fill", function (d) {
+          //  return d3.interpolateBlues(d3.scaleLinear().domain([1000, 100000])(d));
+          //})
+
+
+        //.style("fill", function (d) {
+          //var value = d3.scaleLinear()
+            //.domain([0, d3.max(data, function(d) { return +d.total_cases; })])
+            //.range([0, 1])
+            //(d.total_cases);
+            //return d3.interpolateBlues(value);
+          //})
+
+       // .style("fill", function (d) {
+        //if (d.total_cases > 100000) {
+          //  return d3.interpolateBlues(1);
+        //} else if (d.total_cases > 50000) {
+        //    return d3.interpolateBlues(0.9);
+        //} else if (d.total_cases > 10000) {
+         //   return d3.interpolateBlues(0.7);
+        //} else if (d.total_cases > 1000) {
+        //return d3.interpolateBlues(0.5);
+        //} else {
+         //   return d3.interpolateBlues(0.3);
+          //  }
+        //})
+        .on("mouseover", function (d) {
+        // 10. Add tooltips
+        d3.select(this)
+        .style("stroke", "#000")
+        .style("stroke-width", "2px")
+        .style("fill", "yellow");
+        
+        var tooltip = d3.select("#tooltip")
+        .style("opacity", 1)
+        .style("fill", "white");
+        tooltip.html(d.location + "<br>" +
+              "Total cases: " + d.total_cases + "<br>" +
+              "Total deaths: " + d.total_deaths)
+              .style("left", (d3.event.pageX + 10) + "px")
+              .style("top", (d3.event.pageY - 10) + "px");
+          })
+
+       // var tooltip = d3.select("#tooltip")
+        //.style("opacity", 1);
+       // tooltip.html(d.properties.name + "<br>" +
+        //          "Total cases: " + (data.find(function(dataPoint) {
+        //            return dataPoint.iso_code === d.id;
+         //         })?.total_cases || "N/A") + "<br>" +
+         //         "Total deaths: " + (data.find(function(dataPoint) {
+          //          return dataPoint.iso_code === d.id;
+         //         })?.total_deaths))
+
+
+        //var tooltip = d3.select("#tooltip")
+        //.style("opacity", 1);
+        //tooltip.html(d.location + "<br>" +
+          //          "Total cases: " + d.total_cases + "<br>" +
+            //        "Total deaths: " + d.total_deaths)
+            //        .style("left", (d3.event.pageX + 10) + "px")
+            //        .style("top", (d3.event.pageY - 10) + "px");
+        //})
+        .on("mouseout", function (d) {
+            // Hide tooltip and restore stroke
+            d3.select(this)
+            .style("stroke", "#fff")
+            .style("stroke-width", "0.5px")
+            .style("fill", function(d) {
+                const countryData = data.find(function(dataPoint) {
+                return dataPoint.iso_code === d.id;
+                });
+                return countryData ? color(countryData.total_cases) : "#ccc";
+            });
+            d3.select("#tooltip")
+            .style("opacity", 0);
+        });
+
+          // ROTATE GLOBE
+        // rotate the globe continuously
+        function enableRotation() {
+            d3.timer(function (elapsed) {
+                projection.rotate([config.speed * elapsed - 120, config.verticalTilt, config.horizontalTilt]);
+                svg.selectAll("path").attr("d", path);
+             //drawMarkers();
+            });
+        }
+        enableRotation();
+       
+
+        // 11. Add a legend
+        var legend = svg.append("g")
+          .attr("id", "legend")
+          .attr("transform", "translate(20,20)");
+       
+        legend.selectAll("rect")
+          .data([1000000, 100000, 50000,10000, 1000, 100])
+          .enter()
+          .append("rect")
+          .attr("x", 0)
+          .attr("y", function (d, i) {
+            return i * 20;
+          })
+          .attr("width", 20)
+          .attr("height", 20)
+          .style("fill", function (d) {
+            return color.domain([100, 1000, 10000, 50000, 100000, 1000000])(d);
+            //d3.interpolateBlues(d3.scaleLinear().domain([1000, 100000])(d));
+          });
+        
+        legend.selectAll("text")
+          .data([1000000, 100000, 50000,10000, 1000, 100])
+          .enter()
+          .append("text")
+          .style("fill", "white")
+          .attr("x", 30)
+          .attr("y", function (d, i) {
+            return i * 20 + 14;
+          })
+          .text(function (d) {
+            return d3.format(",")(d);
+          });
+        })
+        .catch(function (error) {
+            console.log(error);
+        });
+
+    // 9. Add a tooltip
+    var tooltip = d3.select("body")
+      .append("div")
+      .attr("id", "tooltip")
+      .style("opacity", 0);
+                    //<!-- .style("fill", function(d) {
+                      //  const countryData = data.find(function(dataItem) { return dataItem.iso_code === d.id; });
+                        //return countryData ? color(countryData.total_cases) : "gray"; -->
+                    //<!-- }); -->
+            //<!-- }); -->
+
+    
+        });
+
+       
+          
+	</script>
+</body>
+
+</html>
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<title>D3 Map</title>
+	<script src="https://d3js.org/d3.v7.min.js"></script>
+	<script src="https://d3js.org/topojson.v1.min.js"></script>
+</head>
+
+<body>
+	<script>
+		const width = 800;
+        const height = 600;
+
+        const svg = d3.select("body").append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        const projection = d3.geoOrthographic()
+            .scale(150)
+            .translate([width / 2, height / 2]);
+
+        const path = d3.geoPath().projection(projection);
+
+        const color = d3.scaleLinear()
+            .range(["white", "blue"]);
+
+        d3.csv("https://raw.githubusercontent.com/owid/covid-19-data/037203097b4b7383163a7fcd08ec8ab1645447d3/public/data/jhu/full_data.csv").then(function(data) {
+            color.domain(d3.extent(data, function(d) { return +d.total_cases; }));
+
+            d3.json("https://raw.githubusercontent.com/topojson/world-atlas/master/world/110m.json").then(function(world) {
+                const countries = topojson.feature(world, world.objects.countries);
+
+                svg.selectAll("path")
+                    .data(countries.features)
+                    .enter().append("path")
+                    .attr("d", path)
+                    .style("fill", function(d) {
+                        const countryData = data.find(function(dataItem) { return dataItem.iso_code === d.id; });
+                        return countryData ? color(countryData.total_cases) : "gray";
+                    });
+            });
+        });
+	</script>
+</body>
+
+</html> -->

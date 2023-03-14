@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<title>D3 Map</title>
+	<script src="https://d3js.org/d3.v7.min.js"></script>
+	<script src="https://unpkg.com/topojson-client@3"></script>
+</head>
+
+<body bgcolor="#808080">
+	<div id="map"></div>
+	<div id="slider"></div>
+	<script>
+		const width = 800;
+		const height = 800;
+		const config = {
+			speed: 0.005,
+			verticalTilt: -30,
+			horizontalTilt: 0
+		};
+
+		const svg = d3.select("body").append("svg")
+			.attr("width", width)
+			.attr("height", height);
+
+		const projection = d3.geoOrthographic()
+			.scale(250)
+			.translate([width / 2, height / 2]);
+
+		const path = d3.geoPath().projection(projection);
+
+		const color = d3.scaleThreshold()
+			.domain([100, 1000, 10000, 50000, 100000, 1000000])
+			.range(["#00f663", "#00a844", "#008134", "#005924", "#003214", "#000b04"]);
+
+		const formatDate = d3.timeFormat("%Y-%m-%d");
+
+		const parseDate = d3.timeParse("%Y-%m-%d");
+
+		const slider = d3.select("#slider");
+
+		const tooltip = d3.select("body").append("div")
+			.attr("class", "tooltip")
+			.style("opacity", 0);
+
+		d3.csv("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/jhu/full_data.csv").then(function(data) {
+			const countriesData = d3.nest()
+				.key(function(d) {
+					return d.iso_code;
+				})
+				.entries(data);
+
+			const dates = d3.extent(data, function(d) {
+				return parseDate(d.date);
+			});
+
+			const sliderScale = d3.scaleTime()
+				.domain(dates)
+				.range([0, 100])
+				.clamp(true);
+
+			slider.append("input")
+				.attr("type", "range")
+				.attr("min", 0)
+				.attr("max", 100)
+				.attr("value", 0)
+				.attr("step", 1)
+				.on("input", function() {
+					const date = sliderScale.invert(this.value);
+					update(date);
+				});
+
+			const worldJsonUrl = "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson";
+
+			d3.json(worldJsonUrl).then(function(world) {
+				const countries = topojson.feature(world, world.objects.countries);
+
+				svg.append("g
